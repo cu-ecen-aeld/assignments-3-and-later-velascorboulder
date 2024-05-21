@@ -1,5 +1,9 @@
 #include "systemcalls.h"
-
+#include <stdlib.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <fcntl.h>
 /**
  * @param cmd the command to execute with system()
  * @return true if the command in @param cmd was executed
@@ -16,8 +20,13 @@ bool do_system(const char *cmd)
  *   and return a boolean true if the system() call completed with success
  *   or false() if it returned a failure
 */
-
-    return true;
+	int ret;
+	ret = system(cmd);
+	if(ret == -1)
+		return false;
+	else
+		return true;
+//    return true;
 }
 
 /**
@@ -47,7 +56,7 @@ bool do_exec(int count, ...)
     command[count] = NULL;
     // this line is to avoid a compile warning before your implementation is complete
     // and may be removed
-    command[count] = command[count];
+  //  command[count] = command[count];
 
 /*
  * TODO:
@@ -58,10 +67,52 @@ bool do_exec(int count, ...)
  *   as second argument to the execv() command.
  *
 */
+    bool ret;
+    pid_t pid;
+    int status;
+
+    ret = false;
+    pid = fork();
+    if(pid == -1)
+    {
+	    ret = false;
+	    perror("ERROR fork:");
+	    return false;
+    }
+    else if (pid == 0){
+	    
+	    execv(command[0],command);
+	    perror("ERROR execv:");
+	    ret = false;
+	    exit(-1);
+    }
+
+    pid = wait(&status);
+
+    if(pid == -1)
+    {
+	    ret = false;
+	    perror("ERROR wait");
+	    return false;
+    }
+    else if(WIFEXITED(status))
+    {
+	if(WEXITSTATUS(status))
+	{
+		perror("wait");
+		printf("Should NOT be ok\n");
+		return false;
+	}
+	else
+	{
+		printf("Should be ok do_exec\n");
+		return true;
+	}
+    }
 
     va_end(args);
 
-    return true;
+    return ret;
 }
 
 /**
@@ -82,7 +133,7 @@ bool do_exec_redirect(const char *outputfile, int count, ...)
     command[count] = NULL;
     // this line is to avoid a compile warning before your implementation is complete
     // and may be removed
-    command[count] = command[count];
+    //command[count] = command[count];
 
 
 /*
@@ -92,8 +143,59 @@ bool do_exec_redirect(const char *outputfile, int count, ...)
  *   The rest of the behaviour is same as do_exec()
  *
 */
+    bool ret = false;
+    pid_t pid;
+    int status;
+    printf("Output File is : %s\n",outputfile);
+    int fd = open(outputfile,O_RDWR|O_TRUNC|O_CREAT, 0644);
+    if(fd == -1)
+    {
+	    perror("open");
+	    return false;
+    }
+
+    pid = fork();
+    if(pid == -1)
+    {
+	    perror("fork");
+	    return false;
+    }
+    else if (pid == 0)
+    {
+	    if(dup2(fd, 1) < 0)
+	    {
+		    perror("dup2");
+		    return false;
+	    }
+	    close(fd);
+	    execvp(command[0],command);
+	    perror("execvp");
+	    exit(-1);
+    }
+    else
+    {
+	    close(fd);
+    }
+
+    pid = wait(&status);
+
+    if(pid == -1)
+    {
+	    perror("wait");
+	    return false;
+    }
+    else if(WIFEXITED(status))
+    {
+	    if(WEXITSTATUS(status))
+		    return false;
+	    else
+		    return true;
+
+
+
+    }
 
     va_end(args);
 
-    return true;
+    return ret;
 }

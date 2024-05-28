@@ -83,11 +83,16 @@ echo "Library dependencies"
 ${CROSS_COMPILE}readelf -a bin/busybox | grep "program interpreter"
 ${CROSS_COMPILE}readelf -a bin/busybox | grep "Shared library"
 
+#cd ${FINDER_APP_DIR}
 # _TODO: Add library dependencies to rootfs
+cp ${FINDER_APP_DIR}/ccdependencies/ld-linux-aarch64.so.1 ${OUTDIR}/rootfs/lib
+cp ${FINDER_APP_DIR}/ccdependencies/libc.so.6 ${OUTDIR}/rootfs/lib64
+cp ${FINDER_APP_DIR}/ccdependencies/libm.so.6 ${OUTDIR}/rootfs/lib64
+cp ${FINDER_APP_DIR}/ccdependencies/libresolv.so.2 ${OUTDIR}/rootfs/lib64
 
-${CROSS_COMPILE}readelf -a bin/busybox | grep "program interpreter" | awk -F': ' '{print $2}' | awk -v base="$SYSROOT_DIR" -F']' '{print base $1}' | xargs -I {} cp {} lib
+#${CROSS_COMPILE}readelf -a bin/busybox | grep "program interpreter" | awk -F': ' '{print $2}' | awk -v base="$SYSROOT_DIR" -F']' '{print base $1}' | xargs -I {} cp {} lib
 
-${CROSS_COMPILE}readelf -a bin/busybox | grep "Shared library" | awk -F'[' '{print $2}' | awk -v base="$SYSROOT_DIR"/lib64/ -F']' '{print base $1}' | xargs -I {} cp {} lib64
+#${CROSS_COMPILE}readelf -a bin/busybox | grep "Shared library" | awk -F'[' '{print $2}' | awk -v base="$SYSROOT_DIR"/lib64/ -F']' '{print base $1}' | xargs -I {} cp {} lib64
 
 
 # _TODO: Make device nodes

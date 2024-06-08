@@ -1,5 +1,7 @@
 CC = ${CROSS_COMPILE}gcc
 
+all: writer
+
 writer: writer.c
 	${CC} $^ -o $@
 

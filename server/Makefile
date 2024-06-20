@@ -4,7 +4,7 @@ default: all
 
 all: aesdsocket
 
-writer: aesdsocket.c
+aesdsocket: aesdsocket.c
 	${CC} $^ -o $@
 
 .PHONY: clean

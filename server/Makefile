@@ -5,7 +5,7 @@ default: all
 all: aesdsocket
 
 aesdsocket: aesdsocket.c
-	${CC} $^ -o $@
+	${CC} $^ -o $@ -lpthread
 
 .PHONY: clean
 clean:

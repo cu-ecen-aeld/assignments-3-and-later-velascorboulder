@@ -108,7 +108,7 @@ int run_as_daemon()
 
 void *handle_connection(void *arg)
 {
-
+	printf("Handling connection...\r\n");
     thread_node_t *node = (thread_node_t *)arg;
     int newsockfd = node->newsockfd;
     
@@ -175,10 +175,11 @@ void *handle_connection(void *arg)
         free(data);
         //file = NULL;
         //close(newsockfd);
-        
+        printf("Finished handling connecton, trying to pthread_exit...\r\n");
         //syslog(LOG_INFO, "Closed connection from %s", client_ip);
         node->thread_complete = true;
         pthread_exit(NULL);
+	printf("exited thread...\r\n");
 }
 
 void *append_timestamp(void *arg) {
@@ -336,7 +337,8 @@ int main(int argc, char *argv[])
             syslog(LOG_ERR,"Accept failed");
             continue;
         }
-
+	
+	printf("Creating new thread...\r\n");
         //CREATE NEW THREAD
         thread_node_t *node = malloc(sizeof(thread_node_t));
         if(node == NULL)
@@ -356,7 +358,8 @@ int main(int argc, char *argv[])
         pthread_mutex_lock(&file_mutex);
         SLIST_INSERT_HEAD(&head,node,entries);
         pthread_mutex_unlock(&file_mutex);
-
+	
+	printf("Cleaning up completed tasks...\r\n");
         //clean up completed tasks
         pthread_mutex_lock(&file_mutex);
         thread_node_t *curr;

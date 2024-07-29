@@ -112,7 +112,7 @@ void *handle_connection(void *arg)
     thread_node_t *node = (thread_node_t *)arg;
     int newsockfd = node->newsockfd;
     
-    struct sockaddr_storage cli_addr;
+    //truct sockaddr_storage cli_addr;
 
 
 
@@ -122,8 +122,8 @@ void *handle_connection(void *arg)
         ////////////////////////////
 
         char buffer[BUFFER_SIZE];
-        char *accumulated_data = NULL;
-        size_t accumulated_size = 0;
+        //char *accumulated_data = NULL;
+        //size_t accumulated_size = 0;
 
         ssize_t bytes_received = BUFFER_SIZE;
 

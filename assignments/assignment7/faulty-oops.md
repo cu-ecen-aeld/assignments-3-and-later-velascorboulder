@@ -1,9 +1,14 @@
-# Kernel oops  NULL Pointer Dereference Error
+# Kernel NULL Pointer Dereference Error
+
+## Notes
+
+- **Line 1**: Summarizes what happened. It indicates that a kernel NULL pointer dereference occurred.
+- **Line 18**: Shows where the fault occurred in the code. The `pc` (program counter) points to the function `faulty_write` with an offset, helping identify the location of the issue.
 
 ## Error Message
 
 ```plaintext
-1  Unable to handle kernel NULL pointer dereference at virtual address 0000000000000000  # Line 1 tells us what happened
+1  Unable to handle kernel NULL pointer dereference at virtual address 0000000000000000
 2  Mem abort info:
 3    ESR = 0x96000045
 4    EC = 0x25: DABT (current EL), IL = 32 bits
@@ -20,7 +25,7 @@
 15   CPU: 0 PID: 126 Comm: sh Tainted: G           O      5.15.18 #1
 16   Hardware name: linux,dummy-virt (DT)
 17   pstate: 80000005 (Nzcv daif -PAN -UAO -TCO -DIT -SSBS BTYPE=--)
-18   pc : faulty_write+0x14/0x20 [faulty]  # Line 18 tells us where the fault occurs
+18   pc : faulty_write+0x14/0x20 [faulty]
 19   lr : vfs_write+0xa8/0x2b0
 20   sp : ffffffc008d23d80
 21   x29: ffffffc008d23d80 x28: ffffff80020d8cc0 x27: 0000000000000000
@@ -45,4 +50,3 @@
 40   el0t_64_sync+0x1a0/0x1a4
 41   Code: d2800001 d2800000 d503233f d50323bf (b900003f)
 42   ---[ end trace 9d15569e1bb3c522 ]---
-

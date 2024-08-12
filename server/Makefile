@@ -1,15 +1,17 @@
 CC ?= ${CROSS_COMPILE}gcc
 CFLAGS ?= -g -Wall -Werror
+CFLAGS += -DUSE_AESD_CHAR_DEVICE=1
 TARGET ?= aesdsocket
 LDFLAGS ?= -lpthread -lrt
 
 default: all
 
-all: aesdsocket
+all: $(TARGET)
 
-aesdsocket: aesdsocket.c
-	${CC} $(CFLAGS) $^ -o $@ $(INCLUDES) $(LDFLAGS)
+$(TARGET): aesdsocket.c
+	${CC} $(CFLAGS) $^ -o $@ $(LDFLAGS)
 
 .PHONY: clean
 clean:
-	rm -f aesdsocket *.o
+	rm -f $(TARGET) *.o
+

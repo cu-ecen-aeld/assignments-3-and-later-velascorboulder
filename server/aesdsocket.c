@@ -16,7 +16,14 @@
 #include <pthread.h>
 
 #define PORT "9000"
+
+#ifdef USE_AESD_CHAR_DEVICE
+#define DATA_FILE "/dev/aesdchar"
+#else
 #define DATA_FILE "/var/tmp/aesdsocketdata"
+#endif
+
+
 #define BUFFER_SIZE 1024
 #define BACKLOG 10
 int sockfd = -1;
@@ -60,7 +67,10 @@ void sig_handler(int signo)
             free(node);
         }
 
-        remove(DATA_FILE);
+	if (strcmp(DATA_FILE, "/var/tmp/aesdsocketdata") == 0) {
+            remove(DATA_FILE);
+        }
+
         closelog();
         exit(0);
     }
@@ -108,11 +118,10 @@ int run_as_daemon()
 
 void *handle_connection(void *arg)
 {
-	printf("Handling connection...\r\n");
+
     thread_node_t *node = (thread_node_t *)arg;
     int newsockfd = node->newsockfd;
     
-    //truct sockaddr_storage cli_addr;
 
 
 
@@ -122,8 +131,6 @@ void *handle_connection(void *arg)
         ////////////////////////////
 
         char buffer[BUFFER_SIZE];
-        //char *accumulated_data = NULL;
-        //size_t accumulated_size = 0;
 
         ssize_t bytes_received = BUFFER_SIZE;
 
@@ -175,11 +182,10 @@ void *handle_connection(void *arg)
         free(data);
         //file = NULL;
         //close(newsockfd);
-        printf("Finished handling connecton, trying to pthread_exit...\r\n");
+        
         //syslog(LOG_INFO, "Closed connection from %s", client_ip);
         node->thread_complete = true;
         pthread_exit(NULL);
-	printf("exited thread...\r\n");
 }
 
 void *append_timestamp(void *arg) {
@@ -210,6 +216,7 @@ void *append_timestamp(void *arg) {
 int main(int argc, char *argv[])
 {
 
+    printf("Data File: %s",DATA_FILE);
     bool become_daemon = false;
 
     if((argc == 2) && (strcmp(argv[1],"-d")) == 0)
@@ -291,8 +298,8 @@ int main(int argc, char *argv[])
 
     pthread_mutex_init(&file_mutex,NULL);
 
-        pthread_t timer_thread;
-    pthread_create(&timer_thread, NULL, append_timestamp, NULL);
+//        pthread_t timer_thread;
+//    pthread_create(&timer_thread, NULL, append_timestamp, NULL);
 
     SLIST_INIT(&head);
 
@@ -337,8 +344,7 @@ int main(int argc, char *argv[])
             syslog(LOG_ERR,"Accept failed");
             continue;
         }
-	
-	printf("Creating new thread...\r\n");
+
         //CREATE NEW THREAD
         thread_node_t *node = malloc(sizeof(thread_node_t));
         if(node == NULL)
@@ -358,8 +364,7 @@ int main(int argc, char *argv[])
         pthread_mutex_lock(&file_mutex);
         SLIST_INSERT_HEAD(&head,node,entries);
         pthread_mutex_unlock(&file_mutex);
-	
-	printf("Cleaning up completed tasks...\r\n");
+
         //clean up completed tasks
         pthread_mutex_lock(&file_mutex);
         thread_node_t *curr;

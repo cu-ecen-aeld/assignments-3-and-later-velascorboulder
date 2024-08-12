@@ -1,4 +1,4 @@
-/**
+    /**
  * @file aesdchar.c
  * @brief Functions and data related to the AESD char driver implementation
  *
@@ -21,17 +21,23 @@
 int aesd_major =   0; // use dynamic major
 int aesd_minor =   0;
 
-MODULE_AUTHOR("Your Name Here"); /** TODO: fill in your name **/
+MODULE_AUTHOR("Richard Velasco"); /** TODO: fill in your name **/
 MODULE_LICENSE("Dual BSD/GPL");
 
 struct aesd_dev aesd_device;
 
 int aesd_open(struct inode *inode, struct file *filp)
 {
+    struct aesd_dev *dev; 
+
     PDEBUG("open");
-    /**
-     * TODO: handle open
-     */
+
+    // Get the container of the aesd_dev structure using the inode
+    dev = container_of(inode->i_cdev, struct aesd_dev, cdev);
+
+    // Store the device pointer in the file's private data
+    filp->private_data = dev;
+
     return 0;
 }
 
@@ -105,6 +111,8 @@ int aesd_init_module(void)
     /**
      * TODO: initialize the AESD specific portion of the device
      */
+
+    register_chrdev(dev,"aesdchar",&aesd_fops);
 
     result = aesd_setup_cdev(&aesd_device);
 

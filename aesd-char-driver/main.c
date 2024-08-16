@@ -129,10 +129,109 @@ out:
     return retval;
 }
 
+static loff_t aesd_llseek(struct file *filep, loff_t off, int whence) {
+    struct aesd_dev *dev = filep->private_data;
+    loff_t new_pos = 0;
+    loff_t buffer_size;
+    size_t entry_offset;
+    
+    if (mutex_lock_interruptible(&dev->lock))
+        return -ERESTARTSYS;
+
+    // Calculate the total size of the circular buffer data
+    buffer_size = 0;
+    for (size_t i = 0; i < AESDCHAR_MAX_WRITE_OPERATIONS_SUPPORTED; i++) {
+        buffer_size += dev->circular_buffer.entry[i].size;
+    }
+
+    switch (whence) {
+    case SEEK_SET:
+        new_pos = off;
+        break;
+    case SEEK_CUR:
+        new_pos = filep->f_pos + off;
+        break;
+    case SEEK_END:
+        new_pos = buffer_size + off;
+        break;
+    default:
+        mutex_unlock(&dev->lock);
+        return -EINVAL;
+    }
+
+    // Ensure the new position is within bounds
+    if (new_pos < 0 || new_pos > buffer_size) {
+        mutex_unlock(&dev->lock);
+        return -EINVAL;
+    }
+
+    filep->f_pos = new_pos;
+    mutex_unlock(&dev->lock);
+    return new_pos;
+}
+
+long aesd_unlocked_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
+{
+    struct aesd_dev *dev = filp->private_data;
+    struct aesd_seekto seekto;
+    size_t entry_offset;
+    loff_t new_pos = 0;
+    loff_t buffer_pos = 0;
+    int ret = 0;
+
+    if (_IOC_TYPE(cmd) != AESD_IOC_MAGIC) return -ENOTTY;
+    if (_IOC_NR(cmd) > AESDCHAR_IOC_MAXNR) return -ENOTTY;
+
+    if (mutex_lock_interruptible(&dev->lock))
+        return -ERESTARTSYS;
+
+    switch (cmd) {
+    case AESDCHAR_IOCSEEKTO:
+        if (copy_from_user(&seekto, (const void __user *)arg, sizeof(seekto))) {
+            ret = -EFAULT;
+            goto out;
+        }
+
+        // Validate command index
+        if (seekto.write_cmd >= AESDCHAR_MAX_WRITE_OPERATIONS_SUPPORTED ||
+            dev->circular_buffer.entry[seekto.write_cmd].size == 0) {
+            ret = -EINVAL;
+            goto out;
+        }
+
+        // Validate offset
+        if (seekto.write_cmd_offset >= dev->circular_buffer.entry[seekto.write_cmd].size) {
+            ret = -EINVAL;
+            goto out;
+        }
+
+        // Calculate the new position based on the command index and offset
+        for (size_t i = 0; i < seekto.write_cmd; i++) {
+            buffer_pos += dev->circular_buffer.entry[i].size;
+        }
+        new_pos = buffer_pos + seekto.write_cmd_offset;
+
+        // Update the file position
+        filp->f_pos = new_pos;
+        ret = new_pos;
+        break;
+
+    default:
+        ret = -ENOTTY;
+        break;
+    }
+
+out:
+    mutex_unlock(&dev->lock);
+    return ret;
+}
+
 static struct file_operations aesd_fops = {
     .owner =    THIS_MODULE,
     .read =     aesd_read,
     .write =    aesd_write,
+    .llseek =   aesd_llseek,
+    .unlocked_ioctl = aesd_unlocked_ioctl,
     .open =     aesd_open,
     .release =  aesd_release,
 };

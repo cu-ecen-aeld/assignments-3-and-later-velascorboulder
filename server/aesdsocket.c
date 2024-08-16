@@ -14,6 +14,7 @@
 #include <linux/fs.h>
 #include "sys/queue.h"
 #include <pthread.h>
+#include "../aesd-char-driver/aesd_ioctl.h"
 
 #define PORT "9000"
 

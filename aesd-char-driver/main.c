@@ -8,6 +8,7 @@
 #include <linux/mutex.h> // For mutex
 #include "aesdchar.h"
 #include "aesd-circular-buffer.h"
+#include "aesd_ioctl.h"
 
 #define AESD_MAJOR 0
 #define AESD_MINOR 0
@@ -140,7 +141,8 @@ static loff_t aesd_llseek(struct file *filep, loff_t off, int whence) {
 
     // Calculate the total size of the circular buffer data
     buffer_size = 0;
-    for (size_t i = 0; i < AESDCHAR_MAX_WRITE_OPERATIONS_SUPPORTED; i++) {
+    size_t i = 0;
+    for (i = 0; i < AESDCHAR_MAX_WRITE_OPERATIONS_SUPPORTED; i++) {
         buffer_size += dev->circular_buffer.entry[i].size;
     }
 
@@ -206,7 +208,8 @@ long aesd_unlocked_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
         }
 
         // Calculate the new position based on the command index and offset
-        for (size_t i = 0; i < seekto.write_cmd; i++) {
+        size_t i = 0;
+        for (i = 0; i < seekto.write_cmd; i++) {
             buffer_pos += dev->circular_buffer.entry[i].size;
         }
         new_pos = buffer_pos + seekto.write_cmd_offset;

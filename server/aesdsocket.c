@@ -116,6 +116,7 @@ int run_as_daemon()
     
 }
 
+/*
 void *handle_connection(void *arg)
 {
 
@@ -187,7 +188,81 @@ void *handle_connection(void *arg)
         node->thread_complete = true;
         pthread_exit(NULL);
 }
+*/
 
+void *handle_connection(void *arg)
+{
+    thread_node_t *node = (thread_node_t *)arg;
+    int newsockfd = node->newsockfd;
+
+    char buffer[BUFFER_SIZE];
+    ssize_t bytes_received;
+    char *data = NULL;
+    size_t data_len = 0;
+
+    while ((bytes_received = recv(newsockfd, buffer, BUFFER_SIZE, 0)) > 0)
+    {
+        data = realloc(data, data_len + bytes_received);
+        if (data == NULL)
+        {
+            syslog(LOG_ERR, "Memory allocation failed");
+            break;
+        }
+
+        memcpy(data + data_len, buffer, bytes_received);
+        data_len += bytes_received;
+
+        if (memchr(buffer, '\n', bytes_received) != NULL)
+        {
+            data[data_len] = '\0';  // Null-terminate the string
+
+            // Check for AESDCHAR_IOCSEEKTO:X,Y command
+            if (strncmp(data, "AESDCHAR_IOCSEEKTO:", 19) == 0)
+            {
+                unsigned int x, y;
+                if (sscanf(data + 19, "%u,%u", &x, &y) == 2)
+                {
+                    struct aesd_seekto seekto;
+                    seekto.write_cmd = x;
+                    seekto.write_cmd_offset = y;
+
+                    // Perform the IOCTL command
+                    if (ioctl(fileno(file), AESDCHAR_IOCSEEKTO, &seekto) == -1)
+                    {
+                        syslog(LOG_ERR, "IOCTL command failed");
+                    }
+                }
+
+                // Do not write this command to the device
+                data_len = 0;
+                continue;
+            }
+
+            // Write to the device
+            pthread_mutex_lock(node->mutex);
+            fwrite(data, 1, data_len, file);
+            fflush(file);
+            fseek(file, 0, SEEK_SET);
+
+            // Read and send back the content
+            while ((bytes_received = fread(buffer, 1, BUFFER_SIZE, file)) > 0)
+            {
+                send(newsockfd, buffer, bytes_received, 0);
+            }
+            pthread_mutex_unlock(node->mutex);
+
+            free(data);
+            data = NULL;
+            data_len = 0;
+        }
+    }
+
+    fclose(file);
+    pthread_mutex_unlock(&file_mutex);
+    free(data);
+    node->thread_complete = true;
+    pthread_exit(NULL);
+}
 void *append_timestamp(void *arg) {
     while (1) {
         sleep(10);

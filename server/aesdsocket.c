@@ -195,12 +195,17 @@ void *handle_connection(void *arg)
 {
     thread_node_t *node = (thread_node_t *)arg;
     int newsockfd = node->newsockfd;
-
+    bool ioctlcmd_rcvd = false;
     char buffer[BUFFER_SIZE];
     ssize_t bytes_received;
     char *data = NULL;
     size_t data_len = 0;
-
+    printf("starting thread\r\n");
+    pthread_mutex_lock(node->mutex);
+    if((file = fopen(DATA_FILE, "a+")) == NULL)
+    {
+        printf("failed to open file\r\n");
+    }
     while ((bytes_received = recv(newsockfd, buffer, BUFFER_SIZE, 0)) > 0)
     {
         data = realloc(data, data_len + bytes_received);
@@ -216,17 +221,20 @@ void *handle_connection(void *arg)
         if (memchr(buffer, '\n', bytes_received) != NULL)
         {
             data[data_len] = '\0';  // Null-terminate the string
-
+            printf("Received Data = %s\r\n",data);
             // Check for AESDCHAR_IOCSEEKTO:X,Y command
             if (strncmp(data, "AESDCHAR_IOCSEEKTO:", 19) == 0)
             {
+                ioctlcmd_rcvd = true;
+                printf("received ioctl command\r\n");
                 unsigned int x, y;
                 if (sscanf(data + 19, "%u,%u", &x, &y) == 2)
                 {
+                    printf("seeking now %d, %d\r\n", x, y);
                     struct aesd_seekto seekto;
                     seekto.write_cmd = x;
                     seekto.write_cmd_offset = y;
-
+                    syslog(LOG_INFO, "ABOUT TO PERFORM IOCTL COMMAND");
                     // Perform the IOCTL command
                     if (ioctl(fileno(file), AESDCHAR_IOCSEEKTO, &seekto) == -1)
                     {
@@ -235,31 +243,57 @@ void *handle_connection(void *arg)
                 }
 
                 // Do not write this command to the device
-                data_len = 0;
-                continue;
+                //data_len = 0;
+                //continue;
             }
 
+            printf("no ioctl command received\r\n");
             // Write to the device
-            pthread_mutex_lock(node->mutex);
-            fwrite(data, 1, data_len, file);
-            fflush(file);
-            fseek(file, 0, SEEK_SET);
+            if(0)//pthread_mutex_lock(node->mutex) != 0)
+            {
+                printf("mutex lock fail\r\n");
+            }
 
+            printf("writing data\r\n");
+            printf("data len = %ld\r\n", data_len);
+            if(!ioctlcmd_rcvd)
+            {
+            if(fwrite(data, 1, data_len, file) < data_len)
+            {
+                printf("file write error\r\n");
+            }
+            
+
+            printf("flushing file\r\n");
+            fflush(file);
+            if(fseek(file, 0, SEEK_SET) != 0)
+            {
+                printf("fseek error\r\n");
+            }
+            }
             // Read and send back the content
+            printf("going to send bytes back\r\n");
             while ((bytes_received = fread(buffer, 1, BUFFER_SIZE, file)) > 0)
             {
                 send(newsockfd, buffer, bytes_received, 0);
             }
-            pthread_mutex_unlock(node->mutex);
+            //printf("unlocking mutex\r\n");
+            //pthread_mutex_unlock(node->mutex);
 
+            printf("freeing data");
             free(data);
             data = NULL;
             data_len = 0;
         }
     }
 
+    printf("closing file\r\n");
     fclose(file);
+
+    printf("unlocking mutes again?\r\n");
     pthread_mutex_unlock(&file_mutex);
+
+    printf("freeing data\r\n");
     free(data);
     node->thread_complete = true;
     pthread_exit(NULL);
@@ -434,7 +468,7 @@ int main(int argc, char *argv[])
         node->thread_complete = 0;
         node->mutex = &file_mutex;
         //node->Ffile = file;
-
+        printf("about to create thred\r\n");
         pthread_create(&node->thread, NULL, handle_connection, node);
 
         pthread_mutex_lock(&file_mutex);

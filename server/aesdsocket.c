@@ -197,6 +197,7 @@ void *handle_connection(void *arg)
 
 void *handle_connection(void *arg)
 {
+    syslog(LOG_ERR, "Using data file %s", DATA_FILE);
     thread_node_t *node = (thread_node_t *)arg;
     int newsockfd = node->newsockfd;
     bool ioctlcmd_rcvd = false;

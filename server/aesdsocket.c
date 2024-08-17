@@ -15,6 +15,7 @@
 #include "sys/queue.h"
 #include <pthread.h>
 #include "../aesd-char-driver/aesd_ioctl.h"
+#include <errno.h>
 
 #define PORT "9000"
 
@@ -235,10 +236,12 @@ void *handle_connection(void *arg)
                     seekto.write_cmd = x;
                     seekto.write_cmd_offset = y;
                     syslog(LOG_INFO, "ABOUT TO PERFORM IOCTL COMMAND");
+                    syslog(LOG_INFO, "seeking now %d, %d",x,y);
                     // Perform the IOCTL command
                     if (ioctl(fileno(file), AESDCHAR_IOCSEEKTO, &seekto) == -1)
                     {
-                        syslog(LOG_ERR, "IOCTL command failed");
+                        //syslog(LOG_ERR, "IOCTL command failed");
+                        syslog(LOG_ERR, "IOCTL command failed with error: %s", strerror(errno));
                     }
                 }
 
